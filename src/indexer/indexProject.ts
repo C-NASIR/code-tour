@@ -1,5 +1,8 @@
 import type { FileSummarizer } from "../ai/summarizeFile.js";
-import { createParserProject, parseSourceFile } from "../parser/parseSourceFile.js";
+import {
+  createParserProject,
+  parseSourceFile,
+} from "../parser/parseSourceFile.js";
 import { scanProject } from "../scanner/scanProject.js";
 import { openProjectDatabase } from "../storage/db.js";
 import { replaceProjectIndex } from "../storage/projectIndexRepository.js";
@@ -24,7 +27,7 @@ type IndexProjectOptions = {
 export async function indexProject({
   projectPath,
   summarizeFile,
-  summaryModel
+  summaryModel,
 }: IndexProjectOptions): Promise<IndexingReport> {
   const projectRoot = resolveProjectRoot(projectPath);
   const scanResult = await scanProject(projectRoot);
@@ -46,16 +49,17 @@ export async function indexProject({
     try {
       const summary = await summarizeFile({
         filePath: file.path,
-        content: file.content
+        content: file.content,
       });
 
       summaries.push({
         filePath: file.path,
         summary,
         model: summaryModel,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       });
-    } catch {
+    } catch (error) {
+      console.log("error happened when calling the model ", error);
       continue;
     }
   }
@@ -72,15 +76,39 @@ export async function indexProject({
     projectPath: projectRoot,
     filesScanned: scanResult.files.length,
     filesParsed: parsedFiles.length,
-    importsFound: parsedFiles.reduce((total, file) => total + file.imports.length, 0),
-    exportsFound: parsedFiles.reduce((total, file) => total + file.exports.length, 0),
-    functionsFound: parsedFiles.reduce((total, file) => total + file.functions.length, 0),
-    classesFound: parsedFiles.reduce((total, file) => total + file.classes.length, 0),
-    methodsFound: parsedFiles.reduce((total, file) => total + file.methods.length, 0),
-    functionCallsFound: parsedFiles.reduce((total, file) => total + file.functionCalls.length, 0),
-    routesFound: parsedFiles.reduce((total, file) => total + file.routes.length, 0),
-    middlewareFound: parsedFiles.reduce((total, file) => total + file.middleware.length, 0),
+    importsFound: parsedFiles.reduce(
+      (total, file) => total + file.imports.length,
+      0,
+    ),
+    exportsFound: parsedFiles.reduce(
+      (total, file) => total + file.exports.length,
+      0,
+    ),
+    functionsFound: parsedFiles.reduce(
+      (total, file) => total + file.functions.length,
+      0,
+    ),
+    classesFound: parsedFiles.reduce(
+      (total, file) => total + file.classes.length,
+      0,
+    ),
+    methodsFound: parsedFiles.reduce(
+      (total, file) => total + file.methods.length,
+      0,
+    ),
+    functionCallsFound: parsedFiles.reduce(
+      (total, file) => total + file.functionCalls.length,
+      0,
+    ),
+    routesFound: parsedFiles.reduce(
+      (total, file) => total + file.routes.length,
+      0,
+    ),
+    middlewareFound: parsedFiles.reduce(
+      (total, file) => total + file.middleware.length,
+      0,
+    ),
     summariesCreated: summaries.length,
-    skippedFiles
+    skippedFiles,
   };
 }

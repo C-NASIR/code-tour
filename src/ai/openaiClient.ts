@@ -1,7 +1,10 @@
+import dotenv from "dotenv";
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { FileSummarySchema } from "./summarySchema.js";
 import type { FileSummarizer } from "./summarizeFile.js";
+
+dotenv.config();
 
 type SummaryEnv = {
   OPENAI_API_KEY: string;
@@ -11,6 +14,9 @@ type SummaryEnv = {
 /**
  * Validates the environment required to generate file summaries during
  * indexing.
+ *
+ * Values may come from the shell environment or a local `.env` file loaded
+ * when this module is initialized.
  */
 export function getSummaryEnv(env: NodeJS.ProcessEnv = process.env): SummaryEnv {
   const apiKey = env.OPENAI_API_KEY?.trim();

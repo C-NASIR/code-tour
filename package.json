@@ -15,6 +15,7 @@
   "dependencies": {
     "better-sqlite3": "latest",
     "commander": "latest",
+    "dotenv": "^17.4.2",
     "fast-glob": "latest",
     "openai": "latest",
     "ts-morph": "latest",

@@ -7,21 +7,13 @@ import { hashFile } from "./hashFile.js";
 import { isSupportedSourceFile, shouldIgnoreBySize, shouldIgnorePath } from "./ignoreRules.js";
 import type { ScanProjectResult, SourceFileRecord, SourceLanguage } from "../types/sourceFile.js";
 
-const SOURCE_GLOB = "**/*.{ts,tsx,js,jsx}";
+const SOURCE_GLOB = "**/*.{ts,js,mts,cts,mjs,cjs}";
 
 function getLanguageForExtension(filePath: string): SourceLanguage {
   const extension = path.extname(filePath).toLowerCase();
 
-  if (extension === ".ts") {
+  if (extension === ".ts" || extension === ".mts" || extension === ".cts") {
     return "ts";
-  }
-
-  if (extension === ".tsx") {
-    return "tsx";
-  }
-
-  if (extension === ".jsx") {
-    return "jsx";
   }
 
   return "js";

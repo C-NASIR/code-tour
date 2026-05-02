@@ -8,7 +8,7 @@ function createSourceFileRecord(filePath: string, content: string): SourceFileRe
     id: filePath,
     path: filePath,
     absolutePath: filePath,
-    language: filePath.endsWith(".tsx") ? "tsx" : "ts",
+    language: filePath.endsWith(".js") ? "js" : "ts",
     content,
     hash: hashFile(content),
     size: Buffer.byteLength(content, "utf8")
@@ -16,54 +16,52 @@ function createSourceFileRecord(filePath: string, content: string): SourceFileRe
 }
 
 describe("parser", () => {
-  it("extracts imports, exports, functions, components, routes, and api calls", () => {
+  it("extracts imports, exports, functions, classes, routes, middleware, and function calls", () => {
     const content = `
-      import axios from "axios";
+      const express = require("express");
       import { Router } from "express";
+      import { listUsers } from "./controller";
 
-      export const helper = () => 42;
+      export const helper = () => listUsers();
 
-      export function LoginForm() {
-        const handleSubmit = async () => {
-          await axios.post("/api/login");
-          await fetch("/api/session", { method: "POST" });
-        };
-
-        return <button onClick={handleSubmit}>Submit</button>;
+      export class UserService {
+        static list() {
+          return helper();
+        }
       }
 
+      const app = express();
       const router = Router();
-      router.post("/login", () => {});
+      app.use("/users", router);
+      router.post("/login", listUsers);
     `;
     const project = createParserProject();
-    const parsedFile = parseSourceFile(project, createSourceFileRecord("src/example.tsx", content));
+    const parsedFile = parseSourceFile(project, createSourceFileRecord("src/example.ts", content));
 
     expect(parsedFile).not.toBeNull();
-    expect(parsedFile?.imports).toHaveLength(2);
+    expect(parsedFile?.imports).toHaveLength(3);
     expect(parsedFile?.exports.some((record) => record.exportedNames.includes("helper"))).toBe(true);
     expect(parsedFile?.functions.map((record) => record.name)).toContain("helper");
-    expect(parsedFile?.components.map((record) => record.name)).toContain("LoginForm");
+    expect(parsedFile?.classes.map((record) => record.name)).toContain("UserService");
+    expect(parsedFile?.methods.map((record) => record.name)).toContain("list");
     expect(parsedFile?.routes).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           method: "POST",
-          path: "/login"
+          path: "/login",
+          handlerName: "listUsers"
         })
       ])
     );
-    expect(parsedFile?.apiCalls).toEqual(
+    expect(parsedFile?.middleware).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          client: "axios",
-          method: "POST",
-          url: "/api/login"
-        }),
-        expect.objectContaining({
-          client: "fetch",
-          method: "POST",
-          url: "/api/session"
+          mountPath: "/users"
         })
       ])
+    );
+    expect(parsedFile?.functionCalls.map((record) => record.callee)).toEqual(
+      expect.arrayContaining(["listUsers", "express", "Router", "app.use", "router.post", "helper"])
     );
   });
 

@@ -25,7 +25,7 @@ export function listSymbols(db: ProjectDatabase): SymbolRow[] {
     .prepare(
       `SELECT name, kind, file_path AS filePath, start_line AS startLine, end_line AS endLine
        FROM symbols
-       WHERE kind IN ('function', 'component')
+       WHERE kind IN ('function', 'class', 'method')
        ORDER BY name, file_path`
     )
     .all() as SymbolRow[];

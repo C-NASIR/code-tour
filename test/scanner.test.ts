@@ -13,7 +13,9 @@ import { scanProject } from "../src/scanner/scanProject.js";
 
 describe("scanner", () => {
   it("filters supported source files and ignore rules", () => {
-    expect(isSupportedSourceFile("src/App.tsx")).toBe(true);
+    expect(isSupportedSourceFile("src/app.ts")).toBe(true);
+    expect(isSupportedSourceFile("src/server.cjs")).toBe(true);
+    expect(isSupportedSourceFile("src/App.tsx")).toBe(false);
     expect(isSupportedSourceFile("src/logo.svg")).toBe(false);
     expect(shouldIgnorePath("node_modules/pkg/index.ts")).toBe(true);
     expect(shouldIgnorePath("src/package-lock.json")).toBe(true);

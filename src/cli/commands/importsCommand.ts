@@ -12,8 +12,8 @@ export function registerImportsCommand(program: Command): void {
     .command("imports")
     .argument("<filePath>", "Indexed file path")
     .description("Show imports for a file")
-    .option("--project <path>", "Indexed project root", process.cwd())
-    .action((filePath: string, options: { project: string }) => {
+    .option("--project <path>", "Indexed project root")
+    .action((filePath: string, options: { project?: string }) => {
       const projectRoot = resolveReadProjectRoot(options.project);
       const imports = readImportsForFile(projectRoot, filePath);
       console.log(formatImports(imports));

@@ -10,8 +10,8 @@ function isNamedFunctionInitializer(node: Node | undefined): boolean {
  * Extracts named functions from declarations and variable-assigned function
  * expressions.
  *
- * Anonymous callbacks are ignored, and React components are classified by the
- * dedicated component extractor instead.
+ * Anonymous callbacks are ignored so the symbol index stays focused on named,
+ * reusable code units.
  */
 export function extractFunctions(sourceFile: SourceFile, filePath: string): FunctionRecord[] {
   const records = new Map<string, FunctionRecord>();

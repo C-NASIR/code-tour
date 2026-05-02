@@ -5,9 +5,11 @@ export type IndexingReport = {
   importsFound: number;
   exportsFound: number;
   functionsFound: number;
-  componentsFound: number;
+  classesFound: number;
+  methodsFound: number;
+  functionCallsFound: number;
   routesFound: number;
-  apiCallsFound: number;
+  middlewareFound: number;
   summariesCreated: number;
   skippedFiles: number;
 };

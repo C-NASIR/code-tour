@@ -1,25 +1,17 @@
 import { Project, ScriptKind, type SourceFile } from "ts-morph";
-import { extractApiCalls } from "./extractApiCalls.js";
-import { extractComponents } from "./extractComponents.js";
+import { analyzeExpress } from "../frameworks/express.js";
+import { extractClasses } from "./extractClasses.js";
 import { extractExports } from "./extractExports.js";
+import { extractFunctionCalls } from "./extractFunctionCalls.js";
 import { extractFunctions } from "./extractFunctions.js";
 import { extractImports } from "./extractImports.js";
-import { extractRoutes } from "./extractRoutes.js";
 import type { ParsedFile } from "../types/parsedFile.js";
 import type { SourceFileRecord } from "../types/sourceFile.js";
 import type { SymbolRecord } from "../types/records.js";
 import { createId } from "../utils/createId.js";
 
 function getScriptKind(filePath: string): ScriptKind {
-  if (filePath.endsWith(".tsx")) {
-    return ScriptKind.TSX;
-  }
-
-  if (filePath.endsWith(".jsx")) {
-    return ScriptKind.JSX;
-  }
-
-  if (filePath.endsWith(".ts")) {
+  if (filePath.endsWith(".ts") || filePath.endsWith(".mts") || filePath.endsWith(".cts")) {
     return ScriptKind.TS;
   }
 
@@ -30,7 +22,6 @@ export function createParserProject(): Project {
   return new Project({
     compilerOptions: {
       allowJs: true,
-      jsx: 1
     },
     skipAddingFilesFromTsConfig: true,
     useInMemoryFileSystem: true
@@ -62,11 +53,10 @@ export function parseSourceFile(project: Project, file: SourceFileRecord): Parse
 
   const imports = extractImports(sourceFile, file.path);
   const exports = extractExports(sourceFile, file.path);
-  const components = extractComponents(sourceFile, file.path);
-  const componentNames = new Set(components.map((component) => component.name));
-  const functions = extractFunctions(sourceFile, file.path).filter((record) => !componentNames.has(record.name));
-  const routes = extractRoutes(sourceFile, file.path);
-  const apiCalls = extractApiCalls(sourceFile, file.path);
+  const functions = extractFunctions(sourceFile, file.path);
+  const { classes, methods } = extractClasses(sourceFile, file.path);
+  const functionCalls = extractFunctionCalls(sourceFile, file.path);
+  const frameworkAnalysis = analyzeExpress(sourceFile, file.path);
   const symbols: SymbolRecord[] = [
     ...functions.map((record) => ({
       id: createId("symbol", file.path, "function", record.name, record.startLine),
@@ -76,13 +66,21 @@ export function parseSourceFile(project: Project, file: SourceFileRecord): Parse
       startLine: record.startLine,
       endLine: record.endLine
     })),
-    ...components.map((record) => ({
-      id: createId("symbol", file.path, "component", record.name, record.startLine),
+    ...classes.map((record) => ({
+      id: createId("symbol", file.path, "class", record.name, record.startLine),
       filePath: file.path,
       name: record.name,
-      kind: "component" as const,
+      kind: "class" as const,
       startLine: record.startLine,
       endLine: record.endLine
+    })),
+    ...methods.map((record) => ({
+      id: createId("symbol", file.path, "method", `${record.className}.${record.name}`, record.startLine),
+      filePath: file.path,
+      name: `${record.className}.${record.name}`,
+      kind: "method" as const,
+      startLine: record.startLine,
+      endLine: record.endLine,
     })),
     ...exports.flatMap((record) =>
       record.exportedNames.map((name) => ({
@@ -103,9 +101,11 @@ export function parseSourceFile(project: Project, file: SourceFileRecord): Parse
     imports,
     exports,
     functions,
-    components,
-    routes,
-    apiCalls,
+    classes,
+    methods,
+    functionCalls,
+    routes: frameworkAnalysis.routes,
+    middleware: frameworkAnalysis.middleware,
     symbols
   };
 }

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createProgram } from "../src/cli/program.js";
 import type { FileSummarizer } from "../src/ai/summarizeFile.js";
-import { createTempFixtureCopy, stripAnsi } from "./helpers.js";
+import { createTempExampleCopy, stripAnsi } from "./helpers.js";
 
 function createMockSummarizer(): { model: string; summarizeFile: FileSummarizer } {
   return {
@@ -9,8 +9,9 @@ function createMockSummarizer(): { model: string; summarizeFile: FileSummarizer 
     summarizeFile: async ({ filePath }) => ({
       purpose: `Summary for ${filePath}`,
       mainExports: ["default"],
-      importantFunctions: ["handleSubmit"],
-      externalDependencies: ["react"],
+      importantFunctions: ["listUsers"],
+      importantClasses: ["UserService"],
+      externalDependencies: ["express"],
       sideEffects: []
     })
   };
@@ -54,31 +55,40 @@ describe("cli", () => {
   });
 
   it("runs index and the read commands against the generated database", async () => {
-    const projectRoot = await createTempFixtureCopy("example-app");
+    const projectRoot = await createTempExampleCopy("express-basic");
 
     const indexResult = await runCli(["index", projectRoot]);
     expect(indexResult.stdout).toContain("Indexed project:");
     expect(indexResult.stdout).toContain("Files scanned: 5");
+    expect(indexResult.stdout).toContain("Routes found: 3");
 
     const filesResult = await runCli(["files", "--project", projectRoot]);
-    expect(filesResult.stdout).toContain("src/App.tsx");
-    expect(filesResult.stdout).toContain("src/components/LoginForm.tsx");
+    expect(filesResult.stdout).toContain("src/app.ts");
+    expect(filesResult.stdout).toContain("src/routes/users.ts");
 
     const symbolsResult = await runCli(["symbols", "--project", projectRoot]);
-    expect(symbolsResult.stdout).toContain("LoginForm\tcomponent\tsrc/components/LoginForm.tsx");
-    expect(symbolsResult.stdout).toContain("POST /login\troute\tsrc/server/routes/auth.ts");
+    expect(symbolsResult.stdout).toContain("UserService\tclass\tsrc/services/userService.ts");
+    expect(symbolsResult.stdout).toContain("UserService.createUser\tmethod\tsrc/services/userService.ts");
 
-    const importsResult = await runCli(["imports", "src/components/LoginForm.tsx", "--project", projectRoot]);
-    expect(importsResult.stdout).toContain("react\tuseState");
-    expect(importsResult.stdout).toContain("../api/auth\tloginUser");
+    const importsResult = await runCli(["imports", "src/routes/users.ts", "--project", projectRoot]);
+    expect(importsResult.stdout).toContain("express\tRouter");
+    expect(importsResult.stdout).toContain("../controllers/userController\tcreateUser, listUsers");
 
-    const explainResult = await runCli(["explain", "src/api/auth.ts", "--project", projectRoot]);
-    expect(explainResult.stdout).toContain("Summary for src/api/auth.ts");
-    expect(explainResult.stdout).toContain("fetch\tPOST\t/api/login");
+    const routesResult = await runCli(["routes", "--project", projectRoot]);
+    expect(routesResult.stdout).toContain("GET\t/\tlistUsers\tsrc/routes/users.ts");
+    expect(routesResult.stdout).toContain("POST\t/\tcreateUser\tsrc/routes/users.ts");
+
+    const middlewareResult = await runCli(["middleware", "--project", projectRoot]);
+    expect(middlewareResult.stdout).toContain("/users\tusersRouter\tsrc/app.ts");
+
+    const explainResult = await runCli(["explain", "src/routes/users.ts", "--project", projectRoot]);
+    expect(explainResult.stdout).toContain("Summary for src/routes/users.ts");
+    expect(explainResult.stdout).toContain("Important classes: UserService");
+    expect(explainResult.stdout).toContain("Routes:");
   });
 
   it("returns a clear error when the database is missing", async () => {
-    const projectRoot = await createTempFixtureCopy("example-app");
+    const projectRoot = await createTempExampleCopy("express-basic");
     const result = await runCli(["files", "--project", projectRoot]);
 
     expect(result.stderr).toContain("No index database found");

@@ -12,9 +12,11 @@ export function formatIndexReport(report: IndexingReport): string {
     `Imports found: ${report.importsFound}`,
     `Exports found: ${report.exportsFound}`,
     `Functions found: ${report.functionsFound}`,
-    `Components found: ${report.componentsFound}`,
+    `Classes found: ${report.classesFound}`,
+    `Methods found: ${report.methodsFound}`,
+    `Function calls found: ${report.functionCallsFound}`,
     `Routes found: ${report.routesFound}`,
-    `API calls found: ${report.apiCallsFound}`,
+    `Middleware found: ${report.middlewareFound}`,
     `Summaries created: ${report.summariesCreated}`,
     `Skipped/failed files: ${report.skippedFiles}`
   ].join("\n");
@@ -32,6 +34,31 @@ export function formatSymbolList(
   }>
 ): string {
   return symbols.map((symbol) => `${symbol.name}\t${symbol.kind}\t${symbol.filePath}`).join("\n");
+}
+
+export function formatRouteList(
+  routes: Array<{
+    method: string;
+    path: string;
+    handlerName: string | null;
+    filePath: string;
+  }>
+): string {
+  return routes
+    .map((route) => `${route.method}\t${route.path}\t${route.handlerName ?? "(anonymous)"}\t${route.filePath}`)
+    .join("\n");
+}
+
+export function formatMiddlewareList(
+  middleware: Array<{
+    mountPath: string | null;
+    middlewareName: string | null;
+    filePath: string;
+  }>
+): string {
+  return middleware
+    .map((record) => `${record.mountPath ?? "(global)"}\t${record.middlewareName ?? "(anonymous)"}\t${record.filePath}`)
+    .join("\n");
 }
 
 export function formatImports(
@@ -61,12 +88,14 @@ export function formatExplain(data: {
   imports: Array<{ importedFrom: string; importedNames: string[] }>;
   exports: Array<{ exportedNames: string[]; exportKind: string }>;
   symbols: Array<{ name: string; kind: string }>;
-  routes: Array<{ method: string; path: string }>;
-  apiCalls: Array<{ client: string; method: string | null; url: string | null }>;
+  routes: Array<{ method: string; path: string; handlerName: string | null }>;
+  middleware: Array<{ mountPath: string | null; middlewareName: string | null }>;
+  functionCalls: Array<{ callee: string }>;
   summary: {
     purpose: string;
     mainExports: string[];
     importantFunctions: string[];
+    importantClasses: string[];
     externalDependencies: string[];
     sideEffects: string[];
   } | null;
@@ -84,6 +113,7 @@ export function formatExplain(data: {
     lines.push(`Purpose: ${data.summary.purpose}`);
     lines.push(`Main exports: ${data.summary.mainExports.join(", ") || "(none)"}`);
     lines.push(`Important functions: ${data.summary.importantFunctions.join(", ") || "(none)"}`);
+    lines.push(`Important classes: ${data.summary.importantClasses.join(", ") || "(none)"}`);
     lines.push(`External dependencies: ${data.summary.externalDependencies.join(", ") || "(none)"}`);
     lines.push(`Side effects: ${data.summary.sideEffects.join(", ") || "(none)"}`);
   }
@@ -109,16 +139,28 @@ export function formatExplain(data: {
   lines.push("");
   lines.push("Routes:");
   lines.push(
-    data.routes.length > 0 ? data.routes.map((record) => `${record.method}\t${record.path}`).join("\n") : "(none)"
+    data.routes.length > 0
+      ? data.routes
+          .map((record) => `${record.method}\t${record.path}\t${record.handlerName ?? "(anonymous)"}`)
+          .join("\n")
+      : "(none)"
   );
 
   lines.push("");
-  lines.push("API calls:");
+  lines.push("Middleware:");
   lines.push(
-    data.apiCalls.length > 0
-      ? data.apiCalls
-          .map((record) => `${record.client}\t${record.method ?? "(unknown)"}\t${record.url ?? "(dynamic)"}`)
+    data.middleware.length > 0
+      ? data.middleware
+          .map((record) => `${record.mountPath ?? "(global)"}\t${record.middlewareName ?? "(anonymous)"}`)
           .join("\n")
+      : "(none)"
+  );
+
+  lines.push("");
+  lines.push("Function calls:");
+  lines.push(
+    data.functionCalls.length > 0
+      ? data.functionCalls.map((record) => record.callee).join("\n")
       : "(none)"
   );
 

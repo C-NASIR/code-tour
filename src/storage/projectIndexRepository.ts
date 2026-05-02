@@ -2,10 +2,11 @@ import type { ProjectDatabase } from "./db.js";
 import type { ParsedFile } from "../types/parsedFile.js";
 import type { StoredFileSummary } from "../types/fileSummary.js";
 import type { SourceFileRecord } from "../types/sourceFile.js";
-import { insertApiCalls } from "./apiCallRepository.js";
 import { insertExports } from "./exportRepository.js";
 import { insertFiles } from "./fileRepository.js";
+import { insertFunctionCalls } from "./functionCallRepository.js";
 import { insertImports } from "./importRepository.js";
+import { insertMiddleware } from "./middlewareRepository.js";
 import { insertRoutes } from "./routeRepository.js";
 import { insertFileSummaries } from "./summaryRepository.js";
 import { insertSymbols } from "./symbolRepository.js";
@@ -29,7 +30,8 @@ export function replaceProjectIndex(
       DELETE FROM exports;
       DELETE FROM symbols;
       DELETE FROM routes;
-      DELETE FROM api_calls;
+      DELETE FROM middleware;
+      DELETE FROM function_calls;
       DELETE FROM file_summaries;
       DELETE FROM files;
       DELETE FROM files_fts;
@@ -52,9 +54,13 @@ export function replaceProjectIndex(
       db,
       parsedFiles.flatMap((file) => file.routes)
     );
-    insertApiCalls(
+    insertMiddleware(
       db,
-      parsedFiles.flatMap((file) => file.apiCalls)
+      parsedFiles.flatMap((file) => file.middleware)
+    );
+    insertFunctionCalls(
+      db,
+      parsedFiles.flatMap((file) => file.functionCalls)
     );
     insertFileSummaries(db, summaries);
 

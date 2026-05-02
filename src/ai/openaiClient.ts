@@ -57,7 +57,7 @@ export function createOpenAIFileSummarizer(env: NodeJS.ProcessEnv = process.env)
             content: [
               {
                 type: "input_text",
-                text: "You are summarizing a source code file. Use only the code provided. Return the required JSON object and do not invent missing details."
+                text: "You are summarizing a JavaScript or TypeScript source code file. Use only the code provided. Return the required JSON object and do not invent missing details."
               }
             ]
           },

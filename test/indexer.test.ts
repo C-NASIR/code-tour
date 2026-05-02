@@ -2,11 +2,16 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { getDatabasePath } from "../src/storage/db.js";
-import { readExplainData, readIndexedFiles } from "../src/storage/projectQueries.js";
+import {
+  readExplainData,
+  readIndexedFiles,
+  readIndexedMiddleware,
+  readIndexedRoutes
+} from "../src/storage/projectQueries.js";
 import { indexProject } from "../src/indexer/indexProject.js";
 import { createOpenAIFileSummarizer } from "../src/ai/openaiClient.js";
 import type { FileSummarizer } from "../src/ai/summarizeFile.js";
-import { createTempFixtureCopy } from "./helpers.js";
+import { createTempExampleCopy } from "./helpers.js";
 
 function createMockSummarizer(): { model: string; summarizeFile: FileSummarizer } {
   return {
@@ -14,7 +19,8 @@ function createMockSummarizer(): { model: string; summarizeFile: FileSummarizer 
     summarizeFile: async ({ filePath }) => ({
       purpose: `Summary for ${filePath}`,
       mainExports: ["default"],
-      importantFunctions: ["handleSubmit"],
+      importantFunctions: ["listUsers"],
+      importantClasses: ["UserService"],
       externalDependencies: [],
       sideEffects: []
     })
@@ -23,7 +29,7 @@ function createMockSummarizer(): { model: string; summarizeFile: FileSummarizer 
 
 describe("indexer", () => {
   it("indexes a fixture project into SQLite", async () => {
-    const projectRoot = await createTempFixtureCopy("example-app");
+    const projectRoot = await createTempExampleCopy("express-basic");
     const mock = createMockSummarizer();
     const report = await indexProject({
       projectPath: projectRoot,
@@ -33,22 +39,46 @@ describe("indexer", () => {
 
     expect(report.filesScanned).toBe(5);
     expect(report.filesParsed).toBe(5);
-    expect(report.routesFound).toBe(1);
-    expect(report.apiCallsFound).toBe(1);
+    expect(report.classesFound).toBe(1);
+    expect(report.methodsFound).toBe(2);
+    expect(report.routesFound).toBe(3);
+    expect(report.middlewareFound).toBe(2);
     expect(report.summariesCreated).toBe(5);
 
     const indexedFiles = readIndexedFiles(projectRoot);
-    expect(indexedFiles).toContain("src/App.tsx");
-    expect(indexedFiles).toContain("src/server/routes/auth.ts");
+    expect(indexedFiles).toContain("src/app.ts");
+    expect(indexedFiles).toContain("src/routes/users.ts");
 
-    const explained = readExplainData(projectRoot, "src/api/auth.ts");
-    expect(explained.summary?.purpose).toBe("Summary for src/api/auth.ts");
-    expect(explained.apiCalls).toEqual(
+    const routes = readIndexedRoutes(projectRoot);
+    expect(routes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ method: "GET", path: "/health" }),
+        expect.objectContaining({ method: "GET", path: "/" }),
+        expect.objectContaining({ method: "POST", path: "/" })
+      ])
+    );
+
+    const middleware = readIndexedMiddleware(projectRoot);
+    expect(middleware).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ mountPath: "/users", middlewareName: "usersRouter" })
+      ])
+    );
+
+    const explained = readExplainData(projectRoot, "src/routes/users.ts");
+    expect(explained.summary?.purpose).toBe("Summary for src/routes/users.ts");
+    expect(explained.routes).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          client: "fetch",
-          method: "POST",
-          url: "/api/login"
+          method: "GET",
+          path: "/"
+        })
+      ])
+    );
+    expect(explained.functionCalls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          callee: "Router"
         })
       ])
     );
@@ -58,7 +88,7 @@ describe("indexer", () => {
   });
 
   it("counts malformed files as skipped without failing the run", async () => {
-    const projectRoot = await createTempFixtureCopy("example-app");
+    const projectRoot = await createTempExampleCopy("express-basic");
     await fs.writeFile(path.join(projectRoot, "src", "broken.ts"), "export const broken = (", "utf8");
     const mock = createMockSummarizer();
 

@@ -2,8 +2,8 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-export async function createTempFixtureCopy(fixtureName: string): Promise<string> {
-  const fixtureRoot = path.resolve("test", "fixtures", fixtureName);
+export async function createTempExampleCopy(exampleName: string): Promise<string> {
+  const fixtureRoot = path.resolve("examples", exampleName);
   const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "code-tour-"));
   await fs.cp(fixtureRoot, tempRoot, {
     recursive: true

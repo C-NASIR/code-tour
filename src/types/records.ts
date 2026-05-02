@@ -26,7 +26,7 @@ export type FunctionRecord = {
   endLine: number;
 };
 
-export type ComponentRecord = {
+export type ClassRecord = {
   id: string;
   name: string;
   filePath: string;
@@ -34,7 +34,16 @@ export type ComponentRecord = {
   endLine: number;
 };
 
-export type SymbolKind = "function" | "component" | "export";
+export type MethodRecord = {
+  id: string;
+  name: string;
+  className: string;
+  filePath: string;
+  startLine: number;
+  endLine: number;
+};
+
+export type SymbolKind = "function" | "class" | "method" | "export";
 
 export type SymbolRecord = {
   id: string;
@@ -49,21 +58,27 @@ export type RouteMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export type RouteRecord = {
   id: string;
+  filePath: string;
   method: RouteMethod;
   path: string;
-  filePath: string;
+  handlerName?: string;
   startLine: number;
   endLine: number;
 };
 
-export type ApiCallClient = "fetch" | "axios";
-
-export type ApiCallRecord = {
+export type MiddlewareRecord = {
   id: string;
-  client: ApiCallClient;
-  method: string | null;
-  url: string | null;
   filePath: string;
+  mountPath?: string;
+  middlewareName?: string;
+  startLine: number;
+  endLine: number;
+};
+
+export type FunctionCallRecord = {
+  id: string;
+  filePath: string;
+  callee: string;
   startLine: number;
   endLine: number;
 };

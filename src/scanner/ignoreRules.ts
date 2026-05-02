@@ -1,6 +1,6 @@
 import path from "node:path";
 
-const ALLOWED_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx"]);
+const ALLOWED_EXTENSIONS = new Set([".ts", ".js", ".mts", ".cts", ".mjs", ".cjs"]);
 const IGNORED_DIRECTORIES = new Set([
   "node_modules",
   "dist",

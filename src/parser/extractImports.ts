@@ -1,4 +1,4 @@
-import type { SourceFile } from "ts-morph";
+import { Node, type SourceFile } from "ts-morph";
 import type { ImportRecord } from "../types/records.js";
 import { createId } from "../utils/createId.js";
 
@@ -7,7 +7,7 @@ import { createId } from "../utils/createId.js";
  * names, and line ranges.
  */
 export function extractImports(sourceFile: SourceFile, filePath: string): ImportRecord[] {
-  return sourceFile.getImportDeclarations().map((declaration) => {
+  const records = sourceFile.getImportDeclarations().map((declaration) => {
     const importedNames: string[] = [];
     const defaultImport = declaration.getDefaultImport();
     const namespaceImport = declaration.getNamespaceImport();
@@ -33,4 +33,32 @@ export function extractImports(sourceFile: SourceFile, filePath: string): Import
       endLine: declaration.getEndLineNumber()
     };
   });
+
+  for (const declaration of sourceFile.getVariableDeclarations()) {
+    const initializer = declaration.getInitializer();
+
+    if (!initializer || !Node.isCallExpression(initializer)) {
+      continue;
+    }
+
+    if (initializer.getExpression().getText() !== "require") {
+      continue;
+    }
+
+    const requiredFrom = initializer.getArguments()[0];
+    if (!requiredFrom || !Node.isStringLiteral(requiredFrom)) {
+      continue;
+    }
+
+    records.push({
+      id: createId("import", filePath, declaration.getStartLineNumber(), declaration.getText()),
+      sourceFile: filePath,
+      importedFrom: requiredFrom.getLiteralText(),
+      importedNames: [declaration.getName()],
+      startLine: declaration.getStartLineNumber(),
+      endLine: declaration.getEndLineNumber(),
+    });
+  }
+
+  return records.sort((left, right) => left.startLine - right.startLine);
 }

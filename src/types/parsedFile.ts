@@ -1,9 +1,11 @@
 import type {
-  ApiCallRecord,
-  ComponentRecord,
+  ClassRecord,
   ExportRecord,
   FunctionRecord,
+  FunctionCallRecord,
   ImportRecord,
+  MethodRecord,
+  MiddlewareRecord,
   RouteRecord,
   SymbolRecord
 } from "./records.js";
@@ -13,8 +15,10 @@ export type ParsedFile = {
   imports: ImportRecord[];
   exports: ExportRecord[];
   functions: FunctionRecord[];
-  components: ComponentRecord[];
+  classes: ClassRecord[];
+  methods: MethodRecord[];
+  functionCalls: FunctionCallRecord[];
   routes: RouteRecord[];
-  apiCalls: ApiCallRecord[];
+  middleware: MiddlewareRecord[];
   symbols: SymbolRecord[];
 };

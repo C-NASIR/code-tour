@@ -1,8 +1,9 @@
-import { listApiCallsForFile } from "./apiCallRepository.js";
+import { listFunctionCallsForFile } from "./functionCallRepository.js";
 import { openIndexedProjectDatabase } from "./db.js";
 import { listExportsForFile } from "./exportRepository.js";
 import { getFileByPath, listFiles } from "./fileRepository.js";
 import { listImportsForFile } from "./importRepository.js";
+import { listMiddleware, listMiddlewareForFile } from "./middlewareRepository.js";
 import { listRoutes, listRoutesForFile } from "./routeRepository.js";
 import { getFileSummary } from "./summaryRepository.js";
 import { listSymbols, listSymbolsForFile } from "./symbolRepository.js";
@@ -23,8 +24,8 @@ export function readIndexedFiles(projectRoot: string): string[] {
 /**
  * Returns the combined symbol view used by the `symbols` command.
  *
- * Functions and components are read from the symbols table, while routes are
- * merged in from the dedicated routes table.
+ * Symbols remain generic and exclude framework-specific records such as routes
+ * and middleware.
  */
 export function readIndexedSymbols(projectRoot: string): Array<{
   name: string;
@@ -34,21 +35,49 @@ export function readIndexedSymbols(projectRoot: string): Array<{
   const db = openIndexedProjectDatabase(projectRoot);
 
   try {
-    const symbols = listSymbols(db).map((row) => ({
+    return listSymbols(db).map((row) => ({
       name: row.name,
       kind: row.kind,
       filePath: row.filePath
     }));
-    const routes = listRoutes(db).map((route) => ({
-      name: `${route.method} ${route.path}`,
-      kind: "route",
-      filePath: route.filePath
-    }));
+  } finally {
+    db.close();
+  }
+}
 
-    return [...symbols, ...routes].sort((left, right) => {
-      const nameCompare = left.name.localeCompare(right.name);
-      return nameCompare !== 0 ? nameCompare : left.filePath.localeCompare(right.filePath);
-    });
+export function readIndexedRoutes(projectRoot: string): Array<{
+  method: string;
+  path: string;
+  handlerName: string | null;
+  filePath: string;
+}> {
+  const db = openIndexedProjectDatabase(projectRoot);
+
+  try {
+    return listRoutes(db).map((route) => ({
+      method: route.method,
+      path: route.path,
+      handlerName: route.handlerName,
+      filePath: route.filePath,
+    }));
+  } finally {
+    db.close();
+  }
+}
+
+export function readIndexedMiddleware(projectRoot: string): Array<{
+  mountPath: string | null;
+  middlewareName: string | null;
+  filePath: string;
+}> {
+  const db = openIndexedProjectDatabase(projectRoot);
+
+  try {
+    return listMiddleware(db).map((record) => ({
+      mountPath: record.mountPath,
+      middlewareName: record.middlewareName,
+      filePath: record.filePath,
+    }));
   } finally {
     db.close();
   }
@@ -88,12 +117,14 @@ export function readExplainData(projectRoot: string, filePath: string): {
   imports: Array<{ importedFrom: string; importedNames: string[] }>;
   exports: Array<{ exportedNames: string[]; exportKind: string }>;
   symbols: Array<{ name: string; kind: string }>;
-  routes: Array<{ method: string; path: string }>;
-  apiCalls: Array<{ client: string; method: string | null; url: string | null }>;
+  routes: Array<{ method: string; path: string; handlerName: string | null }>;
+  middleware: Array<{ mountPath: string | null; middlewareName: string | null }>;
+  functionCalls: Array<{ callee: string }>;
   summary: {
     purpose: string;
     mainExports: string[];
     importantFunctions: string[];
+    importantClasses: string[];
     externalDependencies: string[];
     sideEffects: string[];
   } | null;
@@ -124,12 +155,15 @@ export function readExplainData(projectRoot: string, filePath: string): {
       })),
       routes: listRoutesForFile(db, filePath).map((record) => ({
         method: record.method,
-        path: record.path
+        path: record.path,
+        handlerName: record.handlerName,
       })),
-      apiCalls: listApiCallsForFile(db, filePath).map((record) => ({
-        client: record.client,
-        method: record.method,
-        url: record.url
+      middleware: listMiddlewareForFile(db, filePath).map((record) => ({
+        mountPath: record.mountPath,
+        middlewareName: record.middlewareName,
+      })),
+      functionCalls: listFunctionCallsForFile(db, filePath).map((record) => ({
+        callee: record.callee,
       })),
       summary: getFileSummary(db, filePath)?.summary ?? null
     };

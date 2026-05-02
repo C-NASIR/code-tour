@@ -40,15 +40,22 @@ export const SCHEMA_STATEMENTS = [
     file_path TEXT NOT NULL,
     method TEXT NOT NULL,
     path TEXT NOT NULL,
+    handler_name TEXT,
     start_line INTEGER NOT NULL,
     end_line INTEGER NOT NULL
   )`,
-  `CREATE TABLE IF NOT EXISTS api_calls (
+  `CREATE TABLE IF NOT EXISTS middleware (
     id TEXT PRIMARY KEY,
-    client TEXT NOT NULL,
-    method TEXT,
-    url TEXT,
     file_path TEXT NOT NULL,
+    mount_path TEXT,
+    middleware_name TEXT,
+    start_line INTEGER NOT NULL,
+    end_line INTEGER NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS function_calls (
+    id TEXT PRIMARY KEY,
+    file_path TEXT NOT NULL,
+    callee TEXT NOT NULL,
     start_line INTEGER NOT NULL,
     end_line INTEGER NOT NULL
   )`,
@@ -65,6 +72,7 @@ export const SCHEMA_STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS idx_imports_source_file ON imports(source_file)`,
   `CREATE INDEX IF NOT EXISTS idx_exports_file_path ON exports(file_path)`,
   `CREATE INDEX IF NOT EXISTS idx_routes_file_path ON routes(file_path)`,
-  `CREATE INDEX IF NOT EXISTS idx_api_calls_file_path ON api_calls(file_path)`,
+  `CREATE INDEX IF NOT EXISTS idx_middleware_file_path ON middleware(file_path)`,
+  `CREATE INDEX IF NOT EXISTS idx_function_calls_file_path ON function_calls(file_path)`,
   `CREATE VIRTUAL TABLE IF NOT EXISTS files_fts USING fts5(path, content)`
 ] as const;

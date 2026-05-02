@@ -1,4 +1,4 @@
-export type SourceLanguage = "ts" | "tsx" | "js" | "jsx";
+export type SourceLanguage = "ts" | "js";
 
 export type SourceFileRecord = {
   id: string;

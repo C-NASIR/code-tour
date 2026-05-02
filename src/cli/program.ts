@@ -2,6 +2,8 @@ import { Command } from "commander";
 import { registerExplainCommand } from "./commands/explainCommand.js";
 import { registerFilesCommand } from "./commands/filesCommand.js";
 import { registerImportsCommand } from "./commands/importsCommand.js";
+import { registerMiddlewareCommand } from "./commands/middlewareCommand.js";
+import { registerRoutesCommand } from "./commands/routesCommand.js";
 import {
   registerIndexCommand,
   type IndexCommandDependencies,
@@ -24,13 +26,15 @@ export function createProgram(dependencies: ProgramDependencies = {}): Command {
   program
     .name("code-tour")
     .description(
-      "Build a searchable structural map of a TypeScript or React codebase",
+      "Build a searchable structural map of a JavaScript or TypeScript codebase",
     )
     .showHelpAfterError();
 
   registerIndexCommand(program, dependencies.indexCommand);
   registerFilesCommand(program);
   registerSymbolsCommand(program);
+  registerRoutesCommand(program);
+  registerMiddlewareCommand(program);
   registerExplainCommand(program);
   registerImportsCommand(program);
 

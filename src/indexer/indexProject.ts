@@ -75,9 +75,11 @@ export async function indexProject({
     importsFound: parsedFiles.reduce((total, file) => total + file.imports.length, 0),
     exportsFound: parsedFiles.reduce((total, file) => total + file.exports.length, 0),
     functionsFound: parsedFiles.reduce((total, file) => total + file.functions.length, 0),
-    componentsFound: parsedFiles.reduce((total, file) => total + file.components.length, 0),
+    classesFound: parsedFiles.reduce((total, file) => total + file.classes.length, 0),
+    methodsFound: parsedFiles.reduce((total, file) => total + file.methods.length, 0),
+    functionCallsFound: parsedFiles.reduce((total, file) => total + file.functionCalls.length, 0),
     routesFound: parsedFiles.reduce((total, file) => total + file.routes.length, 0),
-    apiCallsFound: parsedFiles.reduce((total, file) => total + file.apiCalls.length, 0),
+    middlewareFound: parsedFiles.reduce((total, file) => total + file.middleware.length, 0),
     summariesCreated: summaries.length,
     skippedFiles
   };

@@ -1,3 +1,4 @@
+import { traceRouteFlow } from "../src/flow/traceRouteFlow.js";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -6,7 +7,8 @@ import {
   readExplainData,
   readIndexedFiles,
   readIndexedMiddleware,
-  readIndexedRoutes
+  readIndexedRoutes,
+  readTraceIndexData,
 } from "../src/storage/projectQueries.js";
 import { indexProject } from "../src/indexer/indexProject.js";
 import { createOpenAIFileSummarizer } from "../src/ai/openaiClient.js";
@@ -37,26 +39,34 @@ describe("indexer", () => {
       summaryModel: mock.model
     });
 
-    expect(report.filesScanned).toBe(5);
-    expect(report.filesParsed).toBe(5);
+    expect(report.filesScanned).toBe(6);
+    expect(report.filesParsed).toBe(6);
     expect(report.classesFound).toBe(1);
-    expect(report.methodsFound).toBe(2);
-    expect(report.routesFound).toBe(3);
+    expect(report.methodsFound).toBe(3);
+    expect(report.routesFound).toBe(4);
+    expect(report.mountsFound).toBe(1);
     expect(report.middlewareFound).toBe(2);
-    expect(report.summariesCreated).toBe(5);
+    expect(report.callGraphNodesFound).toBeGreaterThan(0);
+    expect(report.callGraphEdgesFound).toBeGreaterThan(0);
+    expect(report.summariesCreated).toBe(6);
 
     const indexedFiles = readIndexedFiles(projectRoot);
     expect(indexedFiles).toContain("src/app.ts");
     expect(indexedFiles).toContain("src/routes/users.ts");
+    expect(indexedFiles).toContain("src/middleware/validateUser.ts");
 
     const routes = readIndexedRoutes(projectRoot);
     expect(routes).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ method: "GET", path: "/health" }),
-        expect.objectContaining({ method: "GET", path: "/" }),
-        expect.objectContaining({ method: "POST", path: "/" })
+        expect.objectContaining({ method: "GET", fullPath: "/health" }),
+        expect.objectContaining({ method: "GET", fullPath: "/users" }),
+        expect.objectContaining({ method: "GET", fullPath: "/users/:id" }),
+        expect.objectContaining({ method: "POST", fullPath: "/users" })
       ])
     );
+    expect(
+      routes.find((route) => route.method === "POST" && route.fullPath === "/users")?.handlers.map((handler) => handler.name)
+    ).toEqual(["validateUser", "createUser"]);
 
     const middleware = readIndexedMiddleware(projectRoot);
     expect(middleware).toEqual(
@@ -71,7 +81,7 @@ describe("indexer", () => {
       expect.arrayContaining([
         expect.objectContaining({
           method: "GET",
-          path: "/"
+          fullPath: "/users"
         })
       ])
     );
@@ -82,6 +92,28 @@ describe("indexer", () => {
         })
       ])
     );
+
+    const postTrace = traceRouteFlow(readTraceIndexData(projectRoot), "POST", "/users");
+    expect(postTrace.steps.map((step) => `${step.kind}:${step.label}`)).toEqual(
+      expect.arrayContaining([
+        "route:POST /users",
+        "middleware:validateUser",
+        "handler:createUser",
+        "service_call:UserService.createUser",
+        "repository_call:usersRepo.create",
+      ])
+    );
+
+    const getByIdTrace = traceRouteFlow(readTraceIndexData(projectRoot), "GET", "/users/:id");
+    expect(getByIdTrace.steps.map((step) => `${step.kind}:${step.label}`)).toEqual(
+      expect.arrayContaining([
+        "route:GET /users/:id",
+        "handler:getUserById",
+        "service_call:UserService.getUserById",
+        "repository_call:usersRepo.getById",
+      ])
+    );
+    expect(getByIdTrace.unresolvedCalls.some((call) => call.callee === "response.json")).toBe(true);
 
     const databasePath = getDatabasePath(projectRoot);
     await expect(fs.stat(databasePath)).resolves.toBeDefined();
@@ -98,8 +130,8 @@ describe("indexer", () => {
       summaryModel: mock.model
     });
 
-    expect(report.filesScanned).toBe(6);
-    expect(report.filesParsed).toBe(5);
+    expect(report.filesScanned).toBe(7);
+    expect(report.filesParsed).toBe(6);
     expect(report.skippedFiles).toBe(1);
   });
 

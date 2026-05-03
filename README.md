@@ -2,17 +2,17 @@
 
 `code-tour` is a local TypeScript CLI for building a structural map of a JavaScript or TypeScript codebase.
 
-Phase 1 is intentionally narrow:
+Phase 2 adds deterministic request-flow tracing on top of the Phase 1 structural index:
 
 ```text
-What exists in this Node codebase?
+What route handles this request pattern, and what project-local code does it call next?
 ```
 
 The tool is framework agnostic at the core and ships with Express as the first framework plugin.
 
-## Phase 1 scope
+## Phase 2 scope
 
-Phase 1 supports:
+Phase 2 supports:
 
 - JavaScript files
 - TypeScript files
@@ -23,17 +23,21 @@ Phase 1 supports:
 - classes
 - methods where easy
 - basic function calls
-- Express routes
-- Express middleware
+- Express routes with ordered handler chains
+- Express mount resolution for `app.use("/prefix", router)`
+- call graph extraction for local project code
+- bounded route tracing
+- optional AI explanation of a deterministic trace
 
-Phase 1 does not support:
+Phase 2 does not support:
 
 - React component understanding
 - JSX analysis
 - frontend event flow
 - browser behavior
 - full runtime behavior
-- deep call graph tracing
+- concrete URL matching such as `/users/123` against `/users/:id`
+- unbounded interprocedural tracing
 - embeddings
 - a web UI
 - automatic code editing
@@ -44,11 +48,15 @@ The system has two layers:
 
 - Core analyzer:
   - scans JS/TS files
-  - extracts imports, exports, functions, classes, methods, and simple function calls
+  - extracts imports, exports, functions, classes, methods, object-literal methods, and simple function calls
   - stores normalized records in SQLite
 - Framework plugins:
   - add framework-specific extraction without changing the generic symbol model
-  - Express is the first plugin and extracts routes and middleware
+  - Express is the first plugin and extracts routes, middleware, mounts, and full mounted paths
+- Flow layer:
+  - resolves route handlers and local call targets conservatively
+  - traces from mounted route patterns into controller, service, and repository calls
+  - surfaces unresolved and external calls instead of guessing
 
 ## Current commands
 
@@ -58,6 +66,7 @@ The system has two layers:
 - `code-tour imports <filePath>`
 - `code-tour routes`
 - `code-tour middleware`
+- `code-tour trace <METHOD> <PATH>`
 - `code-tour explain <filePath>`
 
 ## Install
@@ -123,6 +132,18 @@ List Express routes:
 npm run dev -- routes --project examples/express-basic
 ```
 
+Trace a normalized mounted route pattern:
+
+```bash
+npm run dev -- trace GET /users/:id --project examples/express-basic
+```
+
+Trace and request an AI explanation based only on the stored trace evidence:
+
+```bash
+npm run dev -- trace POST /users --project examples/express-basic --explain
+```
+
 List Express middleware:
 
 ```bash
@@ -149,8 +170,10 @@ The analyzer should detect:
 
 - `app.use("/users", usersRouter)`
 - `router.get("/", listUsers)`
-- `router.post("/", createUser)`
+- `router.get("/:id", getUserById)`
+- `router.post("/", validateUser, createUser)`
 - imports between routes, controllers, services, and repo files
+- controller -> service -> repository flow edges
 
 ## Storage
 
@@ -167,8 +190,12 @@ The index stores:
 - exports
 - symbols
 - routes
+- route handlers
+- express mounts
 - middleware
 - function calls
+- call graph nodes
+- call graph edges
 - summaries
 
 ## Notes
@@ -176,3 +203,6 @@ The index stores:
 - Indexing is a full refresh, not incremental.
 - Malformed files are skipped rather than aborting the whole run.
 - Express support is implemented as plugin-style framework logic under `src/frameworks/express`.
+- Canonical indexed route paths use no trailing slash except for `/`.
+- `trace` matches normalized stored route patterns exactly, so use `/users/:id` rather than `/users/123`.
+- `--explain` reuses `OPENAI_API_KEY` and `OPENAI_MODEL`; deterministic trace output is still shown if explanation fails.

@@ -4,6 +4,7 @@ import { registerFilesCommand } from "./commands/filesCommand.js";
 import { registerImportsCommand } from "./commands/importsCommand.js";
 import { registerMiddlewareCommand } from "./commands/middlewareCommand.js";
 import { registerRoutesCommand } from "./commands/routesCommand.js";
+import { registerTraceCommand, type TraceCommandDependencies } from "./commands/traceCommand.js";
 import {
   registerIndexCommand,
   type IndexCommandDependencies,
@@ -12,6 +13,7 @@ import { registerSymbolsCommand } from "./commands/symbolsCommand.js";
 
 export type ProgramDependencies = {
   indexCommand?: IndexCommandDependencies;
+  traceCommand?: TraceCommandDependencies;
 };
 
 /**
@@ -34,6 +36,7 @@ export function createProgram(dependencies: ProgramDependencies = {}): Command {
   registerFilesCommand(program);
   registerSymbolsCommand(program);
   registerRoutesCommand(program);
+  registerTraceCommand(program, dependencies.traceCommand);
   registerMiddlewareCommand(program);
   registerExplainCommand(program);
   registerImportsCommand(program);

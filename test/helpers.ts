@@ -8,6 +8,10 @@ export async function createTempExampleCopy(exampleName: string): Promise<string
   await fs.cp(fixtureRoot, tempRoot, {
     recursive: true
   });
+  await fs.rm(path.join(tempRoot, ".code-tour"), {
+    recursive: true,
+    force: true,
+  });
   return tempRoot;
 }
 

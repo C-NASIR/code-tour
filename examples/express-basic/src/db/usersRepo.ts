@@ -9,6 +9,9 @@ export const usersRepo = {
   list(): User[] {
     return users;
   },
+  getById(id: number): User | undefined {
+    return users.find((user) => user.id === id);
+  },
   create(input: { name: string }): User {
     const user = {
       id: users.length + 1,

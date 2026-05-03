@@ -1,10 +1,11 @@
 import { Project, ScriptKind, type SourceFile } from "ts-morph";
-import { analyzeExpress } from "../frameworks/express.js";
+import { analyzeExpress } from "../frameworks/express/index.js";
 import { extractClasses } from "./extractClasses.js";
 import { extractExports } from "./extractExports.js";
 import { extractFunctionCalls } from "./extractFunctionCalls.js";
 import { extractFunctions } from "./extractFunctions.js";
 import { extractImports } from "./extractImports.js";
+import { extractObjectMethods } from "./extractObjectMethods.js";
 import type { ParsedFile } from "../types/parsedFile.js";
 import type { SourceFileRecord } from "../types/sourceFile.js";
 import type { SymbolRecord } from "../types/records.js";
@@ -47,7 +48,6 @@ export function parseSourceFile(project: Project, file: SourceFileRecord): Parse
   });
 
   if (hasParseErrors(sourceFile)) {
-    project.removeSourceFile(sourceFile);
     return null;
   }
 
@@ -55,8 +55,28 @@ export function parseSourceFile(project: Project, file: SourceFileRecord): Parse
   const exports = extractExports(sourceFile, file.path);
   const functions = extractFunctions(sourceFile, file.path);
   const { classes, methods } = extractClasses(sourceFile, file.path);
+  const objectMethods = extractObjectMethods(sourceFile, file.path);
   const functionCalls = extractFunctionCalls(sourceFile, file.path);
-  const frameworkAnalysis = analyzeExpress(sourceFile, file.path);
+  const parsedFile: ParsedFile = {
+    filePath: file.path,
+    sourceFile,
+    imports,
+    exports,
+    functions,
+    classes,
+    methods,
+    objectMethods,
+    functionCalls,
+    routes: [],
+    middleware: [],
+    expressMounts: [],
+    callGraphNodes: [],
+    callGraphEdges: [],
+    symbols: [],
+  };
+
+  analyzeExpress(parsedFile);
+
   const symbols: SymbolRecord[] = [
     ...functions.map((record) => ({
       id: createId("symbol", file.path, "function", record.name, record.startLine),
@@ -77,7 +97,15 @@ export function parseSourceFile(project: Project, file: SourceFileRecord): Parse
     ...methods.map((record) => ({
       id: createId("symbol", file.path, "method", `${record.className}.${record.name}`, record.startLine),
       filePath: file.path,
-      name: `${record.className}.${record.name}`,
+        name: `${record.className}.${record.name}`,
+        kind: "method" as const,
+        startLine: record.startLine,
+        endLine: record.endLine,
+      })),
+    ...objectMethods.map((record) => ({
+      id: createId("symbol", file.path, "method", `${record.objectName}.${record.name}`, record.startLine),
+      filePath: file.path,
+      name: `${record.objectName}.${record.name}`,
       kind: "method" as const,
       startLine: record.startLine,
       endLine: record.endLine,
@@ -94,18 +122,7 @@ export function parseSourceFile(project: Project, file: SourceFileRecord): Parse
     )
   ];
 
-  project.removeSourceFile(sourceFile);
+  parsedFile.symbols = symbols;
 
-  return {
-    filePath: file.path,
-    imports,
-    exports,
-    functions,
-    classes,
-    methods,
-    functionCalls,
-    routes: frameworkAnalysis.routes,
-    middleware: frameworkAnalysis.middleware,
-    symbols
-  };
+  return parsedFile;
 }

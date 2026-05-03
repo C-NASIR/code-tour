@@ -1,4 +1,6 @@
 import type { FileSummarizer } from "../ai/summarizeFile.js";
+import { resolveParsedExpressArtifacts } from "../frameworks/express/index.js";
+import { extractCallGraph } from "../graph/extractCallGraph.js";
 import {
   createParserProject,
   parseSourceFile,
@@ -64,6 +66,9 @@ export async function indexProject({
     }
   }
 
+  resolveParsedExpressArtifacts(parsedFiles);
+  extractCallGraph(parsedFiles);
+
   const db = openProjectDatabase(projectRoot);
 
   try {
@@ -104,8 +109,20 @@ export async function indexProject({
       (total, file) => total + file.routes.length,
       0,
     ),
+    mountsFound: parsedFiles.reduce(
+      (total, file) => total + file.expressMounts.length,
+      0,
+    ),
     middlewareFound: parsedFiles.reduce(
       (total, file) => total + file.middleware.length,
+      0,
+    ),
+    callGraphNodesFound: parsedFiles.reduce(
+      (total, file) => total + file.callGraphNodes.length,
+      0,
+    ),
+    callGraphEdgesFound: parsedFiles.reduce(
+      (total, file) => total + file.callGraphEdges.length,
       0,
     ),
     summariesCreated: summaries.length,

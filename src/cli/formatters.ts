@@ -1,4 +1,39 @@
 import type { IndexingReport } from "../types/indexing.js";
+import type { RouteHandlerRef } from "../types/records.js";
+
+function formatNamedFinalHandler(handlers: RouteHandlerRef[]): string {
+  const finalHandler = handlers.at(-1);
+
+  if (!finalHandler) {
+    return "(none)";
+  }
+
+  if (finalHandler.kind === "inline") {
+    return "(inline)";
+  }
+
+  return finalHandler.name ?? "(anonymous)";
+}
+
+function formatHandlerChain(handlers: RouteHandlerRef[]): string {
+  if (handlers.length === 0) {
+    return "(none)";
+  }
+
+  return handlers
+    .map((handler) => {
+      if (handler.kind === "inline") {
+        return "[inline]";
+      }
+
+      if (handler.kind === "middleware") {
+        return `${handler.name ?? "(anonymous)"} [mw]`;
+      }
+
+      return handler.name ?? "(anonymous)";
+    })
+    .join(" -> ");
+}
 
 /**
  * Formats the aggregate report printed after an indexing run.
@@ -16,7 +51,10 @@ export function formatIndexReport(report: IndexingReport): string {
     `Methods found: ${report.methodsFound}`,
     `Function calls found: ${report.functionCallsFound}`,
     `Routes found: ${report.routesFound}`,
+    `Mounts found: ${report.mountsFound}`,
     `Middleware found: ${report.middlewareFound}`,
+    `Call graph nodes found: ${report.callGraphNodesFound}`,
+    `Call graph edges found: ${report.callGraphEdgesFound}`,
     `Summaries created: ${report.summariesCreated}`,
     `Skipped/failed files: ${report.skippedFiles}`
   ].join("\n");
@@ -38,14 +76,20 @@ export function formatSymbolList(
 
 export function formatRouteList(
   routes: Array<{
+    id: string;
     method: string;
     path: string;
-    handlerName: string | null;
+    fullPath: string;
+    fullPathConfidence: string;
+    handlers: RouteHandlerRef[];
     filePath: string;
   }>
 ): string {
   return routes
-    .map((route) => `${route.method}\t${route.path}\t${route.handlerName ?? "(anonymous)"}\t${route.filePath}`)
+    .map((route) => {
+      const confidenceMarker = route.fullPathConfidence === "low" ? " [low-confidence]" : "";
+      return `${route.method}\t${route.fullPath}${confidenceMarker}\t${formatNamedFinalHandler(route.handlers)}\t${route.filePath}`;
+    })
     .join("\n");
 }
 
@@ -88,7 +132,13 @@ export function formatExplain(data: {
   imports: Array<{ importedFrom: string; importedNames: string[] }>;
   exports: Array<{ exportedNames: string[]; exportKind: string }>;
   symbols: Array<{ name: string; kind: string }>;
-  routes: Array<{ method: string; path: string; handlerName: string | null }>;
+  routes: Array<{
+    method: string;
+    path: string;
+    fullPath: string;
+    fullPathConfidence: string;
+    handlers: RouteHandlerRef[];
+  }>;
   middleware: Array<{ mountPath: string | null; middlewareName: string | null }>;
   functionCalls: Array<{ callee: string }>;
   summary: {
@@ -141,7 +191,10 @@ export function formatExplain(data: {
   lines.push(
     data.routes.length > 0
       ? data.routes
-          .map((record) => `${record.method}\t${record.path}\t${record.handlerName ?? "(anonymous)"}`)
+          .map(
+            (record) =>
+              `${record.method}\t${record.fullPath}\traw=${record.path}\tconfidence=${record.fullPathConfidence}\thandlers=${formatHandlerChain(record.handlers)}`
+          )
           .join("\n")
       : "(none)"
   );

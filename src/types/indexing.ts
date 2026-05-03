@@ -9,7 +9,10 @@ export type IndexingReport = {
   methodsFound: number;
   functionCallsFound: number;
   routesFound: number;
+  mountsFound: number;
   middlewareFound: number;
+  callGraphNodesFound: number;
+  callGraphEdgesFound: number;
   summariesCreated: number;
   skippedFiles: number;
 };

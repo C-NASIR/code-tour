@@ -2,6 +2,8 @@ import type { ProjectDatabase } from "./db.js";
 import type { ParsedFile } from "../types/parsedFile.js";
 import type { StoredFileSummary } from "../types/fileSummary.js";
 import type { SourceFileRecord } from "../types/sourceFile.js";
+import { insertCallGraphEdges, insertCallGraphNodes } from "./callGraphRepository.js";
+import { insertExpressMounts } from "./expressMountRepository.js";
 import { insertExports } from "./exportRepository.js";
 import { insertFiles } from "./fileRepository.js";
 import { insertFunctionCalls } from "./functionCallRepository.js";
@@ -30,8 +32,12 @@ export function replaceProjectIndex(
       DELETE FROM exports;
       DELETE FROM symbols;
       DELETE FROM routes;
+      DELETE FROM route_handlers;
       DELETE FROM middleware;
+      DELETE FROM express_mounts;
       DELETE FROM function_calls;
+      DELETE FROM call_graph_nodes;
+      DELETE FROM call_graph_edges;
       DELETE FROM file_summaries;
       DELETE FROM files;
       DELETE FROM files_fts;
@@ -54,6 +60,10 @@ export function replaceProjectIndex(
       db,
       parsedFiles.flatMap((file) => file.routes)
     );
+    insertExpressMounts(
+      db,
+      parsedFiles.flatMap((file) => file.expressMounts)
+    );
     insertMiddleware(
       db,
       parsedFiles.flatMap((file) => file.middleware)
@@ -61,6 +71,14 @@ export function replaceProjectIndex(
     insertFunctionCalls(
       db,
       parsedFiles.flatMap((file) => file.functionCalls)
+    );
+    insertCallGraphNodes(
+      db,
+      parsedFiles.flatMap((file) => file.callGraphNodes)
+    );
+    insertCallGraphEdges(
+      db,
+      parsedFiles.flatMap((file) => file.callGraphEdges)
     );
     insertFileSummaries(db, summaries);
 
@@ -73,7 +91,7 @@ export function replaceProjectIndex(
     const metadataStatement = db.prepare(
       `INSERT INTO metadata (key, value) VALUES (?, ?)`
     );
-    metadataStatement.run("schema_version", "1");
+    metadataStatement.run("schema_version", "2");
     metadataStatement.run("indexed_at", new Date().toISOString());
   });
 

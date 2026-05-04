@@ -29,6 +29,12 @@ async function runCli(args: string[]): Promise<{ stdout: string; stderr: string 
 
   try {
     const program = createProgram({
+      behaviorCommand: {
+        createExplainer: () => ({
+          model: "test-model",
+          explainBehavior: async () => "Mocked behavior explanation",
+        }),
+      },
       indexCommand: {
         createSummarizer: () => createMockSummarizer()
       },
@@ -82,7 +88,6 @@ describe("cli", () => {
     const importsResult = await runCli(["imports", "src/routes/users.ts", "--project", projectRoot]);
     expect(importsResult.stdout).toContain("express\tRouter");
     expect(importsResult.stdout).toContain("../controllers/userController\tcreateUser, getUserById, listUsers");
-    expect(importsResult.stdout).toContain("../middleware/validateUser\tvalidateUser");
 
     const routesResult = await runCli(["routes", "--project", projectRoot]);
     expect(routesResult.stdout).toContain("GET\t/users\tlistUsers\tsrc/routes/users.ts");
@@ -100,7 +105,7 @@ describe("cli", () => {
 
     const traceResult = await runCli(["trace", "POST", "/users", "--project", projectRoot]);
     expect(traceResult.stdout).toContain("Trace: POST /users");
-    expect(traceResult.stdout).toContain("middleware\tvalidateUser");
+    expect(traceResult.stdout).toContain("handler\tcreateUser");
     expect(traceResult.stdout).toContain("service_call\tUserService.createUser");
     expect(traceResult.stdout).toContain("repository_call\tusersRepo.create");
 
@@ -108,6 +113,76 @@ describe("cli", () => {
     expect(explainTraceResult.stdout).toContain("Trace: GET /users/:id");
     expect(explainTraceResult.stdout).toContain("Explanation:");
     expect(explainTraceResult.stdout).toContain("Mocked explanation");
+
+    const behaviorRouteResult = await runCli(["behavior", "route", "GET", "/users", "--project", projectRoot]);
+    expect(behaviorRouteResult.stdout).toContain("Behavior: route GET /users");
+    expect(behaviorRouteResult.stdout).toContain("req.query.limit");
+    expect(behaviorRouteResult.stdout).toContain("usersRepo.findAll");
+
+    const ambiguousFunctionResult = await runCli(["behavior", "function", "createUser", "--project", projectRoot]);
+    expect(ambiguousFunctionResult.stderr).toContain("Ambiguous function name createUser");
+    expect(ambiguousFunctionResult.stderr).toContain("UserService.createUser");
+
+    const behaviorQualifiedFunctionResult = await runCli([
+      "behavior",
+      "function",
+      "UserService.createUser",
+      "--project",
+      projectRoot,
+    ]);
+    expect(behaviorQualifiedFunctionResult.stdout).toContain("Behavior: function UserService.createUser");
+    expect(behaviorQualifiedFunctionResult.stdout).toContain("usersRepo.create");
+
+    const behaviorFileResult = await runCli([
+      "behavior",
+      "file",
+      "src/controllers/userController.ts",
+      "--project",
+      projectRoot,
+    ]);
+    expect(behaviorFileResult.stdout).toContain("Function Behavior:");
+    expect(behaviorFileResult.stdout).toContain("Behavior: function createUser");
+    expect(behaviorFileResult.stdout).toContain("req.body.email");
+
+    const askSummaryResult = await runCli(["ask", "What does POST /users do?", "--project", projectRoot]);
+    expect(askSummaryResult.stdout).toContain("POST /users");
+    expect(askSummaryResult.stdout).toContain("Inputs:");
+
+    const askInputResult = await runCli(["ask", "What input does POST /users read?", "--project", projectRoot]);
+    expect(askInputResult.stdout).toContain("Inputs for POST /users:");
+    expect(askInputResult.stdout).toContain("req_body email");
+
+    const askDatabaseResult = await runCli([
+      "ask",
+      "What database operations happen in GET /users?",
+      "--project",
+      projectRoot,
+    ]);
+    expect(askDatabaseResult.stdout).toContain("Database operations for GET /users:");
+    expect(askDatabaseResult.stdout).toContain("usersRepo.findAll");
+
+    const explainBehaviorRouteResult = await runCli([
+      "behavior",
+      "route",
+      "POST",
+      "/users",
+      "--project",
+      projectRoot,
+      "--explain",
+    ]);
+    expect(explainBehaviorRouteResult.stdout).toContain("Behavior: route POST /users");
+    expect(explainBehaviorRouteResult.stdout).toContain("Mocked behavior explanation");
+
+    const explainBehaviorFunctionResult = await runCli([
+      "behavior",
+      "function",
+      "UserService.createUser",
+      "--project",
+      projectRoot,
+      "--explain",
+    ]);
+    expect(explainBehaviorFunctionResult.stdout).toContain("Behavior: function UserService.createUser");
+    expect(explainBehaviorFunctionResult.stdout).toContain("Mocked behavior explanation");
   });
 
   it("returns a clear error when the database is missing", async () => {

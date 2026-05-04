@@ -1,4 +1,6 @@
 import { Command } from "commander";
+import { registerAskCommand } from "./commands/askCommand.js";
+import { registerBehaviorCommand, type BehaviorCommandDependencies } from "./commands/behaviorCommand.js";
 import { registerExplainCommand } from "./commands/explainCommand.js";
 import { registerFilesCommand } from "./commands/filesCommand.js";
 import { registerImportsCommand } from "./commands/importsCommand.js";
@@ -12,6 +14,7 @@ import {
 import { registerSymbolsCommand } from "./commands/symbolsCommand.js";
 
 export type ProgramDependencies = {
+  behaviorCommand?: BehaviorCommandDependencies;
   indexCommand?: IndexCommandDependencies;
   traceCommand?: TraceCommandDependencies;
 };
@@ -37,6 +40,8 @@ export function createProgram(dependencies: ProgramDependencies = {}): Command {
   registerSymbolsCommand(program);
   registerRoutesCommand(program);
   registerTraceCommand(program, dependencies.traceCommand);
+  registerBehaviorCommand(program, dependencies.behaviorCommand);
+  registerAskCommand(program);
   registerMiddlewareCommand(program);
   registerExplainCommand(program);
   registerImportsCommand(program);

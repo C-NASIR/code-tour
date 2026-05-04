@@ -75,6 +75,7 @@ function createHandlerStep(order: number, kind: RouteFlowStepKind, handler: Rout
     label: handler.name ?? (handler.kind === "inline" ? "[inline]" : "(anonymous)"),
     filePath: handler.targetFilePath ?? handler.filePath,
     line: handler.startLine,
+    targetNodeId: handler.targetNodeId ?? null,
     confidence: handler.confidence,
   };
 }
@@ -202,6 +203,7 @@ export function traceRouteFlow(
         label: targetNode.qualifiedName,
         filePath: targetNode.filePath,
         line: targetNode.startLine,
+        targetNodeId: targetNode.id,
         confidence: edge.confidence,
         evidence: {
           filePath: edge.evidenceFilePath,

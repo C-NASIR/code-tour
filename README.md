@@ -2,17 +2,17 @@
 
 `code-tour` is a local TypeScript CLI for building a structural map of a JavaScript or TypeScript codebase.
 
-Phase 2 adds deterministic request-flow tracing on top of the Phase 1 structural index:
+Phase 3 adds deterministic behavior understanding on top of the Phase 2 structural index:
 
 ```text
-What route handles this request pattern, and what project-local code does it call next?
+What does this route or function actually do, based on the indexed source snapshot?
 ```
 
 The tool is framework agnostic at the core and ships with Express as the first framework plugin.
 
-## Phase 2 scope
+## Phase 3 scope
 
-Phase 2 supports:
+Phase 3 supports:
 
 - JavaScript files
 - TypeScript files
@@ -27,9 +27,12 @@ Phase 2 supports:
 - Express mount resolution for `app.use("/prefix", router)`
 - call graph extraction for local project code
 - bounded route tracing
-- optional AI explanation of a deterministic trace
+- on-demand behavior extraction from indexed file content
+- route behavior assembly from Phase 2 flow evidence
+- deterministic route-scoped `ask` answers
+- optional AI explanation of deterministic trace and behavior output
 
-Phase 2 does not support:
+Phase 3 does not support:
 
 - React component understanding
 - JSX analysis
@@ -44,7 +47,7 @@ Phase 2 does not support:
 
 ## Architecture
 
-The system has two layers:
+The system has three layers:
 
 - Core analyzer:
   - scans JS/TS files
@@ -57,6 +60,11 @@ The system has two layers:
   - resolves route handlers and local call targets conservatively
   - traces from mounted route patterns into controller, service, and repository calls
   - surfaces unresolved and external calls instead of guessing
+- Behavior layer:
+  - reparses indexed file snapshots on demand
+  - extracts direct request reads, validations, side effects, responses, and errors
+  - merges route behavior only through the traced Phase 2 flow
+  - keeps standalone function behavior direct-body only
 
 ## Current commands
 
@@ -67,6 +75,10 @@ The system has two layers:
 - `code-tour routes`
 - `code-tour middleware`
 - `code-tour trace <METHOD> <PATH>`
+- `code-tour behavior route <METHOD> <PATH>`
+- `code-tour behavior function <FUNCTION_NAME>`
+- `code-tour behavior file <FILE_PATH>`
+- `code-tour ask <question>`
 - `code-tour explain <filePath>`
 
 ## Install
@@ -138,10 +150,29 @@ Trace a normalized mounted route pattern:
 npm run dev -- trace GET /users/:id --project examples/express-basic
 ```
 
-Trace and request an AI explanation based only on the stored trace evidence:
+Build deterministic behavior for a route:
+
+```bash
+npm run dev -- behavior route POST /users --project examples/express-basic
+```
+
+Build deterministic direct-body behavior for one function:
+
+```bash
+npm run dev -- behavior function UserService.createUser --project examples/express-basic
+```
+
+Answer one supported deterministic route behavior question:
+
+```bash
+npm run dev -- ask "What database operations happen in GET /users?" --project examples/express-basic
+```
+
+Request an AI explanation based only on stored trace or behavior evidence:
 
 ```bash
 npm run dev -- trace POST /users --project examples/express-basic --explain
+npm run dev -- behavior route POST /users --project examples/express-basic --explain
 ```
 
 List Express middleware:
@@ -171,9 +202,10 @@ The analyzer should detect:
 - `app.use("/users", usersRouter)`
 - `router.get("/", listUsers)`
 - `router.get("/:id", getUserById)`
-- `router.post("/", validateUser, createUser)`
+- `router.post("/", createUser)`
 - imports between routes, controllers, services, and repo files
 - controller -> service -> repository flow edges
+- behavior for `/users` and `/users/:id` from indexed snapshots
 
 ## Storage
 
@@ -205,4 +237,7 @@ The index stores:
 - Express support is implemented as plugin-style framework logic under `src/frameworks/express`.
 - Canonical indexed route paths use no trailing slash except for `/`.
 - `trace` matches normalized stored route patterns exactly, so use `/users/:id` rather than `/users/123`.
-- `--explain` reuses `OPENAI_API_KEY` and `OPENAI_MODEL`; deterministic trace output is still shown if explanation fails.
+- route and behavior commands use canonical stored patterns such as `/users` and `/users/:id`, not `/users/`.
+- `behavior function <name>` fails when a simple name is ambiguous; use the qualified form such as `UserService.createUser`.
+- `ask` is deterministic, route-scoped only, and supports a small fixed intent set.
+- `--explain` reuses `OPENAI_API_KEY` and `OPENAI_MODEL`; deterministic output is still shown if explanation fails.

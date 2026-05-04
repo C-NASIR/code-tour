@@ -44,6 +44,55 @@ export function listCallGraphNodes(db: ProjectDatabase): CallGraphNode[] {
     .all() as CallGraphNode[];
 }
 
+export function getCallGraphNodeById(db: ProjectDatabase, id: string): CallGraphNode | null {
+  const row = db
+    .prepare(
+      `SELECT id, file_path AS filePath, kind, name, qualified_name AS qualifiedName,
+              start_line AS startLine, end_line AS endLine
+       FROM call_graph_nodes
+       WHERE id = ?`
+    )
+    .get(id) as CallGraphNode | undefined;
+
+  return row ?? null;
+}
+
+export function listCallGraphNodesByQualifiedName(db: ProjectDatabase, qualifiedName: string): CallGraphNode[] {
+  return db
+    .prepare(
+      `SELECT id, file_path AS filePath, kind, name, qualified_name AS qualifiedName,
+              start_line AS startLine, end_line AS endLine
+       FROM call_graph_nodes
+       WHERE qualified_name = ?
+       ORDER BY file_path, start_line`
+    )
+    .all(qualifiedName) as CallGraphNode[];
+}
+
+export function listCallGraphNodesByName(db: ProjectDatabase, name: string): CallGraphNode[] {
+  return db
+    .prepare(
+      `SELECT id, file_path AS filePath, kind, name, qualified_name AS qualifiedName,
+              start_line AS startLine, end_line AS endLine
+       FROM call_graph_nodes
+       WHERE name = ?
+       ORDER BY file_path, start_line`
+    )
+    .all(name) as CallGraphNode[];
+}
+
+export function listCallGraphNodesForFile(db: ProjectDatabase, filePath: string): CallGraphNode[] {
+  return db
+    .prepare(
+      `SELECT id, file_path AS filePath, kind, name, qualified_name AS qualifiedName,
+              start_line AS startLine, end_line AS endLine
+       FROM call_graph_nodes
+       WHERE file_path = ?
+       ORDER BY start_line`
+    )
+    .all(filePath) as CallGraphNode[];
+}
+
 export function listCallGraphEdgesBySourceNodeIds(db: ProjectDatabase, sourceNodeIds: string[]): CallGraphEdge[] {
   if (sourceNodeIds.length === 0) {
     return [];

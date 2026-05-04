@@ -15,6 +15,7 @@ export type RouteFlowStep = {
   label: string;
   filePath: string | null;
   line: number | null;
+  targetNodeId?: string | null;
   confidence: Confidence;
   evidence?: {
     filePath: string;

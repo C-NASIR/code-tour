@@ -1,6 +1,13 @@
 import type { CallGraphEdge, CallGraphNode } from "../graph/callGraphTypes.js";
 import type { ExpressMountRecord, RouteHandlerRef } from "../types/records.js";
-import { listCallGraphEdgesBySourceNodeIds, listCallGraphNodes } from "./callGraphRepository.js";
+import {
+  getCallGraphNodeById,
+  listCallGraphEdgesBySourceNodeIds,
+  listCallGraphNodes,
+  listCallGraphNodesByName,
+  listCallGraphNodesByQualifiedName,
+  listCallGraphNodesForFile,
+} from "./callGraphRepository.js";
 import { listExpressMounts, listExpressMountsByRouterFilePath, toExpressMountRecord } from "./expressMountRepository.js";
 import { listFunctionCallsForFile } from "./functionCallRepository.js";
 import { openIndexedProjectDatabase } from "./db.js";
@@ -61,6 +68,22 @@ export function readIndexedFiles(projectRoot: string): string[] {
   }
 }
 
+export function readIndexedFileSnapshot(projectRoot: string, filePath: string): {
+  path: string;
+  language: string;
+  content: string;
+  hash: string;
+  size: number;
+} {
+  const db = openIndexedProjectDatabase(projectRoot);
+
+  try {
+    return assertIndexedFile(db, filePath);
+  } finally {
+    db.close();
+  }
+}
+
 /**
  * Returns the combined symbol view used by the `symbols` command.
  *
@@ -98,6 +121,25 @@ export function readIndexedRoutes(projectRoot: string): Array<{
 
   try {
     return loadRoutesWithHandlers(db, listRoutes(db));
+  } finally {
+    db.close();
+  }
+}
+
+export function readIndexedRoutesForFile(projectRoot: string, filePath: string): Array<{
+  id: string;
+  method: string;
+  path: string;
+  fullPath: string;
+  fullPathConfidence: string;
+  handlers: RouteHandlerRef[];
+  filePath: string;
+}> {
+  const db = openIndexedProjectDatabase(projectRoot);
+
+  try {
+    assertIndexedFile(db, filePath);
+    return loadRoutesWithHandlers(db, listRoutesForFile(db, filePath));
   } finally {
     db.close();
   }
@@ -251,6 +293,47 @@ export function readTraceIndexData(projectRoot: string): {
       callGraphNodes,
       callGraphEdges,
     };
+  } finally {
+    db.close();
+  }
+}
+
+export function readIndexedCallGraphNodeById(projectRoot: string, id: string): CallGraphNode | null {
+  const db = openIndexedProjectDatabase(projectRoot);
+
+  try {
+    return getCallGraphNodeById(db, id);
+  } finally {
+    db.close();
+  }
+}
+
+export function readIndexedCallGraphNodesByQualifiedName(projectRoot: string, qualifiedName: string): CallGraphNode[] {
+  const db = openIndexedProjectDatabase(projectRoot);
+
+  try {
+    return listCallGraphNodesByQualifiedName(db, qualifiedName);
+  } finally {
+    db.close();
+  }
+}
+
+export function readIndexedCallGraphNodesBySimpleName(projectRoot: string, name: string): CallGraphNode[] {
+  const db = openIndexedProjectDatabase(projectRoot);
+
+  try {
+    return listCallGraphNodesByName(db, name);
+  } finally {
+    db.close();
+  }
+}
+
+export function readIndexedCallGraphNodesForFile(projectRoot: string, filePath: string): CallGraphNode[] {
+  const db = openIndexedProjectDatabase(projectRoot);
+
+  try {
+    assertIndexedFile(db, filePath);
+    return listCallGraphNodesForFile(db, filePath);
   } finally {
     db.close();
   }

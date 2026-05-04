@@ -1,20 +1,28 @@
 type User = {
   id: number;
-  name: string;
+  email: string;
+  name?: string;
 };
 
-const users: User[] = [{ id: 1, name: "Ada" }];
+const users: User[] = [{ id: 1, email: "ada@example.com", name: "Ada" }];
 
 export const usersRepo = {
-  list(): User[] {
-    return users;
+  findAll(limit?: number): User[] {
+    if (!limit || Number.isNaN(limit)) {
+      return users;
+    }
+
+    return users.slice(0, limit);
   },
-  getById(id: number): User | undefined {
+
+  findById(id: number): User | undefined {
     return users.find((user) => user.id === id);
   },
-  create(input: { name: string }): User {
+
+  create(input: { email: string; name?: string }): User {
     const user = {
       id: users.length + 1,
+      email: input.email,
       name: input.name,
     };
 

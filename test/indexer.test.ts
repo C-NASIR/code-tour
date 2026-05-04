@@ -66,7 +66,7 @@ describe("indexer", () => {
     );
     expect(
       routes.find((route) => route.method === "POST" && route.fullPath === "/users")?.handlers.map((handler) => handler.name)
-    ).toEqual(["validateUser", "createUser"]);
+    ).toEqual(["createUser"]);
 
     const middleware = readIndexedMiddleware(projectRoot);
     expect(middleware).toEqual(
@@ -97,7 +97,6 @@ describe("indexer", () => {
     expect(postTrace.steps.map((step) => `${step.kind}:${step.label}`)).toEqual(
       expect.arrayContaining([
         "route:POST /users",
-        "middleware:validateUser",
         "handler:createUser",
         "service_call:UserService.createUser",
         "repository_call:usersRepo.create",
@@ -110,7 +109,7 @@ describe("indexer", () => {
         "route:GET /users/:id",
         "handler:getUserById",
         "service_call:UserService.getUserById",
-        "repository_call:usersRepo.getById",
+        "repository_call:usersRepo.findById",
       ])
     );
     expect(getByIdTrace.unresolvedCalls.some((call) => call.callee === "response.json")).toBe(true);
